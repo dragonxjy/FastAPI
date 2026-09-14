@@ -1,0 +1,29 @@
+# Python bytecode and caches
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Virtual environments
+.venv/
+venv/
+
+# IDE and OS files
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Node.js dependencies and local frontend credentials
+node_modules/
+dist/
+tmp_token.txt
+
+# Local environment variables
+.env
+.env.*
+!.env.example
+!env/
+env/*
+!env/.env.example

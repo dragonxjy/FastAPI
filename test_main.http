@@ -1,0 +1,17 @@
+@baseUrl = http://127.0.0.1:8000
+
+### 测试服务
+GET {{baseUrl}}/
+Accept: application/json
+
+### 查询分类
+GET {{baseUrl}}/api/news/categories?page=1&pageSize=20
+Accept: application/json
+
+### 查询新闻列表
+GET {{baseUrl}}/api/news/list?categoryId=1&page=1&pageSize=10
+Accept: application/json
+
+### 查询新闻详情
+GET {{baseUrl}}/api/news/detail?newsId=1
+Accept: application/json
