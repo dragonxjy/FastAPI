@@ -20,7 +20,7 @@ async def add_favorite_service(db: AsyncSession, user_id: int, news_id: int):
 async def cancel_favorite_service(db: AsyncSession, user_id: int, news_id: int):
     result = await favorite_db.cancel_favorite_api(db, user_id, news_id)
     if not result:
-        raise HTTPException(status_code=status.HTTP_405_NOT_FOUND, detail="记录不存在")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="记录不存在")
     return result
 
 
@@ -42,5 +42,4 @@ async def get_favorite_list_service(db: AsyncSession, user_id: int, page: int, p
 async def clear_favorite_list_service(db: AsyncSession, user_id: int):
     result = await favorite_db.clear_favorite_list_api(db, user_id)
     return result
-
 

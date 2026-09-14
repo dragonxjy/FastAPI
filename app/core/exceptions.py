@@ -1,12 +1,10 @@
 import traceback
 
-from fastapi import HTTPException, Request
+from fastapi import Request
 from fastapi.responses import JSONResponse
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
+from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette import status
-
-from fastapi import HTTPException
-from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
 from app.core.config import settings
 
@@ -16,7 +14,7 @@ from app.core.config import settings
 DEBUG_MODE = settings.DEBUG
 
 
-async def http_exception_handler(request: Request, exc: HTTPException):
+async def http_exception_handler(request: Request, exc: StarletteHTTPException):
     """
     处理 HTTPException 异常
     """
@@ -120,7 +118,7 @@ def register_exception_handlers(app):
     """
     注册全局异常处理：子类在前，父类在后；具体在前，抽象在后
     """
-    app.add_exception_handler(HTTPException, http_exception_handler)  # 业务
+    app.add_exception_handler(StarletteHTTPException, http_exception_handler)  # 业务与框架 HTTP 异常
     app.add_exception_handler(IntegrityError, integrity_error_handler)  # 数据完整性约束
     app.add_exception_handler(SQLAlchemyError, sqlalchemy_error_handler)  # 数据库
     app.add_exception_handler(Exception, general_exception_handler)  # 兜底
