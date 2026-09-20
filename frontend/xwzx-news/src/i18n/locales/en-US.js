@@ -16,7 +16,7 @@ export default {
   },
   nav: {
     home: 'Home',
-    aiChat: 'AI Chat',
+    aiChat: 'Article Agent',
     my: 'My'
   },
   home: {
@@ -39,7 +39,7 @@ export default {
     }
   },
   aiChat: {
-    title: 'AI Chat',
+    title: 'Article Agent',
     placeholder: 'Enter your question...',
     send: 'Send',
     thinking: 'AI is thinking...'

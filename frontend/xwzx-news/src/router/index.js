@@ -73,8 +73,8 @@ const routes = [
     name: 'AIChat',
     component: () => import('../views/AIChat.vue'),
     meta: {
-      title: 'AI问答',
-      keepAlive: true
+      title: '文章助手',
+      keepAlive: false
     }
   },
   {

@@ -4,6 +4,7 @@ import { apiConfig } from '../../config/api'
 
 // 进行中的列表请求（模块级，用于并发调用去重，不放入 state 避免序列化）
 let listInFlight = null
+let detailRequestSeq = 0
 
 // 将后端 snake_case 字段统一映射为前端使用的 camelCase 结构
 const normalizeNews = (item) => ({
@@ -24,6 +25,7 @@ export const useNewsStore = defineStore('news', {
   state: () => ({
     newsList: [],
     newsDetail: {},
+    newsDetailError: '',
     categories: [],
     currentCategory: 1,
     page: 1,
@@ -160,35 +162,34 @@ export const useNewsStore = defineStore('news', {
       }
     },
 
-    // 获取新闻详情（含 relatedNews 相关推荐）
-    async getNewsDetail(id) {
+    // 每次都查询最新详情；文章可能已被助手修改或删除，不能用旧列表冒充查询结果。
+    async getNewsDetail(id, options = {}) {
       const newsId = Number(id)
-
+      const requestSeq = ++detailRequestSeq
+      this.newsDetail = {}
+      this.newsDetailError = ''
       try {
         const response = await axios.get(`${apiConfig.baseURL}/api/news/detail`, {
-          params: { newsId }
+          params: { newsId }, signal: options.signal, timeout: 10000,
         })
-
+        // 快速点击不同文章时，只展示最后一次请求，避免旧响应覆盖新页面。
+        if (requestSeq !== detailRequestSeq || options.signal?.aborted) return null
         const res = response.data
-        if (res && res.code === 200 && res.data) {
+        if (res?.code === 200 && res.data) {
           const detail = normalizeNews(res.data)
-          // 相关推荐：结构与列表一致，统一做字段映射，不分页
           detail.relatedNews = Array.isArray(res.data.relatedNews)
-            ? res.data.relatedNews.map(normalizeNews)
-            : []
+            ? res.data.relatedNews.map(normalizeNews) : []
           this.newsDetail = detail
-          return this.newsDetail
+          return detail
         }
+        this.newsDetailError = res?.code === 404
+          ? '文章不存在或已删除' : '文章加载失败，请稍后重试'
       } catch (error) {
-        console.error('获取新闻详情失败:', error)
+        if (requestSeq !== detailRequestSeq || options.signal?.aborted) return null
+        this.newsDetailError = error.response?.status === 404
+          ? '文章不存在或已删除' : '文章加载失败，请检查后端连接后重试'
       }
-
-      // 兜底：接口失败时使用列表中已加载的数据
-      const existing = this.newsList.find(item => item.id === newsId)
-      if (existing) {
-        this.newsDetail = { ...existing, relatedNews: [] }
-        return this.newsDetail
-      }
+      return null
     },
 
     // 获取分类名称

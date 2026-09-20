@@ -13,8 +13,16 @@ dependencies = [
     "uuid>=1.30",
     "uvicorn>=0.52.4",
     "alembic>=1.19.2",
-    "redis>=8.1.0",
+    "langchain>=1.2,<2",
+    "langchain-openai>=1.1,<2",
 ]
+
+[dependency-groups]
+dev = ["pytest>=8,<10", "pytest-asyncio>=1,<2", "httpx>=0.28,<1", "aiosqlite>=0.22,<1"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
 
 [[tool.uv.index]]
 url = "https://pypi.tuna.tsinghua.edu.cn/simple"

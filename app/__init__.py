@@ -15,6 +15,7 @@ from app.core.exceptions import register_exception_handlers
 
 OPENAPI_TAGS = [
     {"name": "系统", "description": "服务状态与基础信息。"},
+    {"name": "文章 AI 助手", "description": "登录后通过自然语言管理文章，返回回答与实际工具执行记录。"},
     {
         "name": "新闻模块",
         "description": "无需登录即可使用的新闻分类、列表和详情查询接口。",

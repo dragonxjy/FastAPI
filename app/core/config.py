@@ -68,6 +68,12 @@ class Settings(BaseSettings):
     # 用户登录令牌的有效天数。
     TOKEN_EXPIRE_DAYS: int = 7
 
+    # 文章助手：只在后端读取密钥，不把密钥发送给浏览器。
+    # 支持工具调用的 OpenAI 兼容服务都可以在 .env.dev 中替换配置。
+    LLM_API_KEY: str = ""
+    LLM_BASE_URL: str = "https://dashscope.aliyuncs.com/compatible-mode/v1"
+    LLM_MODEL: str = "qwen-plus"
+
     @staticmethod
     def _split_csv(value: str) -> list[str]:
         """把逗号分隔的配置转换成 Starlette 需要的字符串列表。"""

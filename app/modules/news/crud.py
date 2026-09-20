@@ -1,10 +1,7 @@
-from fastapi.encoders import jsonable_encoder
 from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from .model import Category, News
-from ..favorite.base import NewsItemBase
-from ...cache.news_cache import get_cached_categories, set_cache_categories, set_cache_news_list, get_cache_news_list
 
 
 # 获取分类列表
@@ -20,19 +17,11 @@ async def get_categories_api(
     :param page_size: 每页数量
     :return: 分类列表
     """
-    # 先尝试从缓存中获取数据
-    cached_categories = await get_cached_categories()
-    if cached_categories:
-        return cached_categories
-    # 计算跳过的数据量
+    # 每次直接读取数据库；固定排序后再分页，保证不同页的数据稳定。
     skip = (page - 1) * page_size
-    statement = select(Category).offset(skip).limit(page_size)
+    statement = select(Category).order_by(Category.sort_order, Category.id).offset(skip).limit(page_size)
     result = await db.execute(statement)
     categories = list(result.scalars().all())
-    # 写入缓存
-    if categories:
-        categories = jsonable_encoder(categories)
-        await set_cache_categories(categories)
     return categories
 
 
@@ -50,26 +39,14 @@ async def get_news_list_api(
     :param page_size: 每页数量
     :return: 新闻列表
     """
-    # 先尝试从缓存获取新闻列表
-    # 跳过的数量skip = (页码 -1) * 每页数量 → 页码 = 跳过的数量 // 每页数量 + 1
-    # await get_cache_news_list(分类id, 页码, 每页数量)
-    cached_list = await get_cache_news_list(category_id, page, page_size)  # 缓存数据 json
-    if cached_list:
-        # return cached_list  # 要的是 ORM
-        return [News(**item) for item in cached_list]
-
-    # 查询的是指定分类下的所有新闻
-    stmt = select(News).where(News.category_id == category_id).offset(page).limit(page_size)
+    # 列表直接读取数据库，因此新增、修改或删除后，下次查询就能看到结果。
+    stmt = (
+        select(News).where(News.category_id == category_id)
+        .order_by(News.publish_time.desc(), News.id.desc())
+        .offset((page - 1) * page_size).limit(page_size)
+    )
     result = await db.execute(stmt)
     news_list = result.scalars().all()
-
-    # 写入缓存
-    if news_list:
-        # 先把 ORM 数据 转换 字典才能写入缓存
-        # ORM 转成 Pydantic，再转为 字典
-        # by_alias=False 不适用别名，保存 Python 风格，因为 Redis 数据是给后端用的
-        news_data = [NewsItemBase.model_validate(item).model_dump(mode="json", by_alias=False) for item in news_list]
-        await set_cache_news_list(category_id, page, page_size, news_data)
 
     return news_list
 

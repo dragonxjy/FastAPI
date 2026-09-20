@@ -1,57 +1,5 @@
-<template>
-  <div class="news-detail">
-    <van-nav-bar
-      title="新闻详情"
-      left-text="返回"
-      left-arrow
-      @click-left="onClickLeft"
-      fixed
-    />
-    
-    <div class="detail-content" v-if="newsStore.newsDetail.id">
-      <div class="title-container">
-        <h1 class="title">{{ newsStore.newsDetail.title }}</h1>
-        <van-button 
-          class="favorite-btn" 
-          :icon="isFavorite ? 'star' : 'star-o'" 
-          :class="{ 'is-favorite': isFavorite }"
-          @click="toggleFavorite"
-        />
-      </div>
-      
-      <div class="info">
-        <span>{{ newsStore.newsDetail.author }}</span>
-        <span>{{ newsStore.newsDetail.publishTime }}</span>
-        <span>{{ newsStore.newsDetail.views }} 阅读</span>
-      </div>
-      
-      <div class="cover" v-if="newsStore.newsDetail.image">
-        <img :src="newsStore.newsDetail.image" :alt="newsStore.newsDetail.title">
-      </div>
-      
-      <div class="content">
-        <p v-for="(paragraph, index) in contentParagraphs" :key="index">
-          {{ paragraph }}
-        </p>
-      </div>
-      
-      <div class="related-news" v-if="relatedNews.length">
-        <h3>相关推荐</h3>
-        <!-- 相关推荐与新闻列表样式一致，直接复用 NewsItem，点击跳转对应详情 -->
-        <news-item
-          v-for="item in relatedNews"
-          :key="item.id"
-          :news="item"
-        />
-      </div>
-    </div>
-    
-    <van-empty v-else description="加载中..." />
-  </div>
-</template>
-
 <script setup>
-import { computed, onMounted, watch } from 'vue'
+import { computed, shallowRef, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useNewsStore } from '../store/modules/news'
 import { useHistoryStore } from '../store/modules/history'
@@ -69,6 +17,7 @@ const userStore = useUserStore()
 
 // 获取路由参数中的新闻ID
 const newsId = computed(() => Number(route.params.id))
+const loading = shallowRef(false)
 
 // 将内容拆分为段落
 const contentParagraphs = computed(() => {
@@ -101,10 +50,10 @@ const toggleFavorite = async () => {
     router.push('/login')
     return
   }
-  
+
   // 已登录则调用API切换收藏状态
   const status = await favoriteStore.toggleFavorite(newsStore.newsDetail)
-  
+
   if (status === true) {
     showToast({
       message: '已添加到收藏',
@@ -124,46 +73,85 @@ const toggleFavorite = async () => {
   }
 }
 
-// 加载新闻详情，并同步浏览历史与收藏状态
-const loadDetail = async () => {
+// 路由变化就查最新文章；离开页面或切换文章时取消旧请求。
+watch(newsId, async (id, previousId, onCleanup) => {
+  const controller = new AbortController()
+  onCleanup(() => controller.abort())
+  loading.value = true
   window.scrollTo(0, 0)
-  await newsStore.getNewsDetail(newsId.value)
+  const detail = await newsStore.getNewsDetail(id, { signal: controller.signal })
+  if (controller.signal.aborted) return
+  loading.value = false
+  if (!detail) return
 
-  // 添加到浏览历史
-  if (newsStore.newsDetail.id) {
-    // 先调用API记录浏览历史
-    if (userStore.getLoginStatus) {
-      try {
-        await historyStore.addHistoryApi(newsStore.newsDetail.id)
-      } catch (error) {
-        console.error('记录浏览历史API失败:', error)
-      }
-    }
-  }
-
-  // 加载收藏数据
   favoriteStore.loadFavorites()
-
-  // 检查文章收藏状态
-  if (userStore.getLoginStatus && newsStore.newsDetail.id) {
-    const result = await favoriteStore.checkFavoriteStatusApi(newsStore.newsDetail.id)
+  if (userStore.getLoginStatus) {
+    await historyStore.addHistoryApi(id)
+    if (controller.signal.aborted) return
+    const result = await favoriteStore.checkFavoriteStatusApi(id)
+    if (controller.signal.aborted) return
     if (result.success && !result.isLocal) {
-      // 如果API请求成功且不是本地状态，更新本地收藏状态
-      if (result.isFavorite && !favoriteStore.isFavorite(newsStore.newsDetail.id)) {
-        favoriteStore.addFavorite(newsStore.newsDetail)
-      } else if (!result.isFavorite && favoriteStore.isFavorite(newsStore.newsDetail.id)) {
-        favoriteStore.removeFavorite(newsStore.newsDetail.id)
+      if (result.isFavorite && !favoriteStore.isFavorite(id)) {
+        favoriteStore.addFavorite(detail)
+      } else if (!result.isFavorite && favoriteStore.isFavorite(id)) {
+        favoriteStore.removeFavorite(id)
       }
     }
   }
-}
-
-// 组件挂载时加载详情
-onMounted(loadDetail)
-
-// 点击相关推荐时路由参数变化但组件被复用，需要监听 id 重新加载
-watch(newsId, loadDetail)
+}, { immediate: true })
 </script>
+
+<template>
+  <div class="news-detail">
+    <van-nav-bar
+      title="新闻详情"
+      left-text="返回"
+      left-arrow
+      @click-left="onClickLeft"
+      fixed
+    />
+
+    <div class="detail-content" v-if="newsStore.newsDetail.id">
+      <div class="title-container">
+        <h1 class="title">{{ newsStore.newsDetail.title }}</h1>
+        <van-button
+          class="favorite-btn"
+          :icon="isFavorite ? 'star' : 'star-o'"
+          :class="{ 'is-favorite': isFavorite }"
+          @click="toggleFavorite"
+        />
+      </div>
+
+      <div class="info">
+        <span>{{ newsStore.newsDetail.author }}</span>
+        <span>{{ newsStore.newsDetail.publishTime }}</span>
+        <span>{{ newsStore.newsDetail.views }} 阅读</span>
+      </div>
+
+      <div class="cover" v-if="newsStore.newsDetail.image">
+        <img :src="newsStore.newsDetail.image" :alt="newsStore.newsDetail.title">
+      </div>
+
+      <div class="content">
+        <p v-for="(paragraph, index) in contentParagraphs" :key="index">
+          {{ paragraph }}
+        </p>
+      </div>
+
+      <div class="related-news" v-if="relatedNews.length">
+        <h3>相关推荐</h3>
+        <!-- 相关推荐与新闻列表样式一致，直接复用 NewsItem，点击跳转对应详情 -->
+        <news-item
+          v-for="item in relatedNews"
+          :key="item.id"
+          :news="item"
+        />
+      </div>
+    </div>
+
+    <van-empty v-else :description="loading ? '加载中...' : newsStore.newsDetailError || '文章不存在或已删除'" />
+  </div>
+</template>
 
 <style scoped>
 .news-detail {

@@ -16,7 +16,7 @@ export default {
   },
   nav: {
     home: '首页',
-    aiChat: 'AI问答',
+    aiChat: '文章助手',
     my: '我的'
   },
   home: {
@@ -39,7 +39,7 @@ export default {
     }
   },
   aiChat: {
-    title: 'AI问答',
+    title: '文章助手',
     placeholder: '请输入您的问题...',
     send: '发送',
     thinking: 'AI思考中...'
