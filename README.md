@@ -75,6 +75,7 @@ flowchart LR
 │  └─ utils/                  # 鉴权和密码工具
 ├─ alembic/                   # 数据库迁移
 ├─ env/.env.example           # 后端配置模板
+├─ .env.example               # 模型配置模板，复制为根目录 .env 后使用
 ├─ frontend/xwzx-news/        # Vue 前端项目
 │  └─ src/
 │     ├─ components/          # 公共组件
@@ -182,15 +183,19 @@ npm run dev
 
 ### 7. 配置文章助手
 
-在后端 `env/.env.dev` 中填写支持工具调用的模型配置，修改后重启后端：
+模型配置统一读取**项目根目录的 `.env`**；数据库等普通配置仍读取 `env/.env.dev`。已有 `.env` 时直接编辑，首次配置时可将根目录 `.env.example` 复制为 `.env`。修改后重启后端。
+
+`service.py` 使用 `load_dotenv(dotenv_path=BASE_DIR / ".env", override=True)` 加载配置，再通过 `os.getenv()` 取值，最后用 LangChain 的 `init_chat_model()` 创建模型。显式指定项目根目录，避免从不同目录启动时读错文件；`override=True` 表示 `.env` 中的值覆盖进程中已有的同名环境变量。
+
+默认直接使用 `.env` 中的 DashScope 配置：
 
 ```dotenv
-LLM_API_KEY=your_api_key
-LLM_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1
-LLM_MODEL=qwen-plus
+DASHSCOPE_API_KEY=your_api_key
+DASHSCOPE_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1
+DASHSCOPE_MODEL=qwen-plus
 ```
 
-默认示例使用 DashScope，也可以替换为其他 OpenAI 兼容服务；所选模型必须支持工具调用（tool calling）。密钥只保存在后端。未配置时，文章浏览和登录仍可使用，聊天页面会显示提示。
+如果 `.env` 已有这些配置，无需重复添加。模型名未填写时默认使用 `qwen-plus`。切换其他 OpenAI 兼容服务时，在同一 `.env` 中填写 `LLM_API_KEY`、`LLM_BASE_URL`、`LLM_MODEL`；这三个通用配置项分别优先于对应的 `DASHSCOPE_*` 配置，切换服务时请一起设置。所选模型必须支持工具调用（tool calling）。密钥只保存在后端。未配置时，文章浏览和登录仍可使用，聊天页面会显示提示。
 
 登录账号后，在底部进入“文章助手”（`/aichat`）。这是共享文章库教学项目，已登录账号可以管理现有 `news` 表中的文章。可以这样练习：
 
@@ -282,7 +287,7 @@ npm run preview
 
 ## 部署注意事项
 
-- 不要提交 `env/.env.dev`、`.env.local`、`tmp_token.txt` 或任何真实密钥，仓库已在 `.gitignore` 中忽略这些文件。
+- 不要提交 `.env`、`env/.env.dev`、`.env.local`、`tmp_token.txt` 或任何真实密钥，仓库已在 `.gitignore` 中忽略这些文件。
 - 模型密钥由后端读取，前端环境变量仅设置 `VITE_API_BASE_URL`；不要将密钥放进浏览器代码。
 - 生产环境请关闭 `DEBUG` 和 `DATABASE_ECHO`，并将 `CORS_ORIGINS` 设置为明确的前端域名。
 - 部署时通过前端 `VITE_API_BASE_URL` 指定后端地址。
